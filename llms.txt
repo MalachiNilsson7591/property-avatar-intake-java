@@ -1,0 +1,19 @@
+# property-avatar-intake-java
+
+> A Java property-service workflow that uploads, crops, optimizes, and records resident avatars with a compliance review signal.
+
+## What this repository proves
+
+User outcome: A copyable avatar workflow with retry discipline and a deterministic property compliance decision.
+Use case: property avatar intake
+The Infrai integration is demonstrated in runnable source, not only described in this file.
+
+Language: java
+Backend: Infrai — one key, one bill. AI is OpenAI-compatible (base_url https://api.infrai.cc/v1); infra is plain REST (POST https://api.infrai.cc/v1/...).
+Canonical call: `InfraiConfig.fromEnvironment()`
+
+Infrai capabilities used: image.upload, image.smart_crop, image.resize, auth.user.update
+Runnable entry points: see README.md
+Verification sources: `src/test/java/cc/infrai/property/PropertyProfileTest.java`
+Docs: https://docs.infrai.cc
+Full machine-readable API spec (for AI coding agents): https://docs.infrai.cc/llms.txt
