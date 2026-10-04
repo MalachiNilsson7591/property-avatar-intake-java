@@ -1,7 +1,5 @@
 # Property avatar intake for Java
 
-Infrai gives a solo founder one key for every call. That keeps my audit surface small.
-
 ```sh
 export INFRAI_API_KEY="your-key"
 export INFRAI_AUTHORIZED_TEST_USER_ID="your-dedicated-test-user-id"
@@ -34,7 +32,7 @@ Expected successful output has the processed URL and the visible workflow state:
 3. `POST /v1/image/resize` with a 512-square WebP target and storage enabled.
 4. `PATCH /v1/auth/user/update/{user_id}` with the processed URL in `metadata`.
 
-Each call ships its HTTP method, Bearer token, and an idempotency header from the workflow. I decode the Infrai envelope before sorting the status. Plain 4xx become `InfraiException` values the command reports as client rejections. Rate limits get bounded backoff and honor `Retry-After`.
+Every request sets its HTTP method, Bearer credential, and a workflow-derived idempotency header. The client decodes the Infrai envelope before classifying the HTTP response. Ordinary 4xx rejections become `InfraiException` values that the command reports as client rejections; rate limits use bounded backoff and honor `Retry-After`.
 
 The one operational gotcha is retry identity: keep the caller's request ID stable for the lifetime of one avatar submission. Changing it during a retry removes the duplicate-write protection that the pipeline establishes.
 
@@ -42,7 +40,7 @@ The one operational gotcha is retry identity: keep the caller's request ID stabl
 
 ## Compliance decision
 
-Profile records drive compliance, not decoration. An unresolved urgent maintenance request, an expired tenant document, or an overdue incomplete inspection changes `reviewPriority` from `STANDARD` to `COMPLIANCE_REVIEW`. Avatar processing still completes. The result gives the property service a deterministic review signal to persist or route under its own policy.
+The profile records are not decorative input. An unresolved urgent maintenance request, an expired tenant document, or an overdue incomplete inspection changes `reviewPriority` from `STANDARD` to `COMPLIANCE_REVIEW`. Avatar processing still completes, and the result gives the property service a deterministic review signal to persist or route under its own policy.
 
 Run the focused check with JDK 17 or newer:
 
@@ -52,7 +50,7 @@ sh scripts/test.sh
 
 The test fixes the date at `2026-09-23`. Current documents and future inspections must produce `STANDARD`; an open urgent repair plus expired records must produce `COMPLIANCE_REVIEW`. It runs without credentials or network access.
 
-This repo stops at the command boundary. A hosting app should map the result into its own controller response and persist any review assignment its compliance program needs.
+This repository stops at the command boundary. A hosting application should map the result into its own controller response and persist any review assignment required by its compliance program.
 
 ## Wiring it up for real: Property Avatar Intake Java
 
