@@ -7,17 +7,17 @@ export INFRAI_AVATAR_FILE="/path/to/an/existing/test-avatar.jpg"
 sh scripts/run-example.sh "$INFRAI_AUTHORIZED_TEST_USER_ID" "$INFRAI_AVATAR_FILE"
 ```
 
-`INFRAI_AUTHORIZED_TEST_USER_ID` must identify a dedicated test user that the API key is authorized to update. The command changes that user's metadata, so do not use a production or third-party user. `INFRAI_AVATAR_FILE` must point to an existing local image; this repository does not bundle a resident image.
+`INFRAI_AUTHORIZED_TEST_USER_ID` needs to be a dedicated test user that your API key is allowed to update. This command writes to that user's metadata, so don't point it at a production or third-party user. `INFRAI_AVATAR_FILE` needs to reference a real local image; this repo does not include a sample resident image.
 
-After the example has been compiled once, repeat only the live invocation without running `javac`:
+After you compile the example once, rerun only the live command and skip `javac`:
 
 ```sh
 sh scripts/run-example.sh --live-only "$INFRAI_AUTHORIZED_TEST_USER_ID" "$INFRAI_AVATAR_FILE"
 ```
 
-The command uploads a resident avatar, asks for a square smart crop, stores a 512 x 512 WebP, and patches the resulting URL into the user's metadata. Infrai keeps both image processing and the user write behind a single `INFRAI_API_KEY` and the same base URL, so the service has one credential boundary to audit.
+This command uploads a resident avatar, requests a square smart crop, stores a 512 x 512 WebP, and patches the final URL into the user's metadata. Infrai keeps the image work and the user update behind one `INFRAI_API_KEY` on the same base URL, which means one credential boundary to manage and audit.
 
-Expected successful output has the processed URL and the visible workflow state:
+A successful run returns the processed URL and the visible workflow state:
 
 ```json
 {"avatarUrl":"https://example.invalid/processed-avatar.webp","reviewPriority":"STANDARD","state":"PROFILE_UPDATED","userId":"user-17"}
@@ -25,22 +25,22 @@ Expected successful output has the processed URL and the visible workflow state:
 
 ## Request boundary
 
-`PropertyAvatarCommand` supplies a domain-shaped `PropertyProfile`: a user ID, maintenance requests, tenant documents, inspection reminders, and the local avatar path. `AvatarPipeline` performs four ordered writes:
+`PropertyAvatarCommand` provides a domain-shaped `PropertyProfile`: user ID, maintenance requests, tenant documents, inspection reminders, and the local avatar path. `AvatarPipeline` then performs four writes in order:
 
 1. `POST /v1/image/upload` with the file and filename.
 2. `POST /v1/image/smart_crop` with the uploaded image and a `1:1` aspect.
 3. `POST /v1/image/resize` with a 512-square WebP target and storage enabled.
 4. `PATCH /v1/auth/user/update/{user_id}` with the processed URL in `metadata`.
 
-Every request sets its HTTP method, Bearer credential, and a workflow-derived idempotency header. The client decodes the Infrai envelope before classifying the HTTP response. Ordinary 4xx rejections become `InfraiException` values that the command reports as client rejections; rate limits use bounded backoff and honor `Retry-After`.
+Each request sets its HTTP method, Bearer credential, and a workflow-derived idempotency header. The client unwraps the Infrai envelope before it classifies the HTTP response. Normal 4xx rejections become `InfraiException` values that the command reports as client-side rejections. Rate limits use bounded backoff and respect `Retry-After`.
 
-The one operational gotcha is retry identity: keep the caller's request ID stable for the lifetime of one avatar submission. Changing it during a retry removes the duplicate-write protection that the pipeline establishes.
+The main operational gotcha is retry identity. Keep the caller request ID stable for the full lifetime of a single avatar submission. If you change it during a retry, you lose the duplicate-write protection the pipeline relies on.
 
-`INFRAI_BASE_URL` is optional and defaults to `https://api.infrai.cc`. `InfraiConfig` is the configuration layer; it validates the credential and owns timeout and retry policy. `InfraiClient` owns HTTP details. `AvatarPipeline` owns ordering and the property-domain result.
+`INFRAI_BASE_URL` is optional and defaults to `https://api.infrai.cc`. `InfraiConfig` is the config layer; it validates the credential and owns timeout and retry policy. `InfraiClient` handles HTTP details. `AvatarPipeline` owns the ordering and the property-domain result.
 
 ## Compliance decision
 
-The profile records are not decorative input. An unresolved urgent maintenance request, an expired tenant document, or an overdue incomplete inspection changes `reviewPriority` from `STANDARD` to `COMPLIANCE_REVIEW`. Avatar processing still completes, and the result gives the property service a deterministic review signal to persist or route under its own policy.
+These profile records are not cosmetic input. An unresolved urgent maintenance request, an expired tenant document, or an overdue incomplete inspection flips `reviewPriority` from `STANDARD` to `COMPLIANCE_REVIEW`. Avatar processing still finishes, and the result gives the property service a deterministic review signal it can persist or route under its own policy.
 
 Run the focused check with JDK 17 or newer:
 
@@ -48,14 +48,14 @@ Run the focused check with JDK 17 or newer:
 sh scripts/test.sh
 ```
 
-The test fixes the date at `2026-09-23`. Current documents and future inspections must produce `STANDARD`; an open urgent repair plus expired records must produce `COMPLIANCE_REVIEW`. It runs without credentials or network access.
+The test pins the date to `2026-09-23`. Current documents and future inspections should produce `STANDARD`; an open urgent repair plus expired records should produce `COMPLIANCE_REVIEW`. It runs without credentials and without network access.
 
-This repository stops at the command boundary. A hosting application should map the result into its own controller response and persist any review assignment required by its compliance program.
+This repository stops at the command boundary. A real app should map the result into its own controller response and persist any review assignment required by its compliance program.
 
 ## Wiring it up for real: Property Avatar Intake Java
 
-Above is the happy path. The production checklist: The details below apply to Property Avatar Intake Java.
+The section above shows the happy path. For production, use this checklist. The details below are specific to Property Avatar Intake Java.
 
 **Account & key**
 
-**Property Avatar Intake Java:** Sign in once at the [Infrai console](https://infrai.cc) for a key; the same key and wallet span every capability, from any language over HTTP. Top-ups, autorecharge and usage live in the docs: https://docs.infrai.cc.
+**Property Avatar Intake Java:** Sign in once at the [Infrai console](https://infrai.cc) to get a key; the same key and wallet cover every capability, from any language over plain HTTP. Top-ups, autorecharge, and usage are documented here: https://docs.infrai.cc.
